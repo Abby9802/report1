@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>QC 知识掌握 · 可编辑版 (上下布局)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        /* ---------- 基础样式 ---------- */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif; }
+        body { min-height: 100vh; background: radial-gradient(ellipse at 20% 20%, #1e3a2f, #0f1f18); background-attachment: fixed; padding: 24px 20px; display: flex; justify-content: center; align-items: flex-start; position: relative; }
+        body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(rgba(46, 125, 80, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(46, 125, 80, 0.06) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+        .dashboard { max-width: 1440px; width: 100%; background: rgba(18, 38, 28, 0.78); backdrop-filter: blur(6px); border-radius: 48px 48px 32px 32px; padding: 32px 34px; border: 1px solid rgba(76, 175, 80, 0.25); box-shadow: 0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06); position: relative; z-index: 1; }
+        .dashboard::before { content: ''; position: absolute; top: -80px; right: -60px; width: 400px; height: 400px; background: radial-gradient(circle, rgba(76,175,80,0.13) 0%, transparent 70%); border-radius: 50%; pointer-events: none; z-index: 0; }
+        .dashboard::after { content: ''; position: absolute; bottom: -60px; left: -60px; width: 350px; height: 350px; background: radial-gradient(circle, rgba(46,125,80,0.10) 0%, transparent 70%); border-radius: 50%; pointer-events: none; z-index: 0; }
+        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 24px; position: relative; z-index: 1; gap: 12px; }
+        .header h1 { font-size: 30px; font-weight: 600; color: #e8f5e9; letter-spacing: 1px; text-shadow: 0 2px 10px rgba(0,20,0,0.4); }
+        .header h1 span { color: #81c784; font-weight: 300; font-size: 18px; margin-left: 12px; }
+        .header .sub { color: #a5d6a7; font-size: 14px; background: rgba(46,125,80,0.25); padding: 6px 18px; border-radius: 40px; backdrop-filter: blur(4px); border: 1px solid rgba(76,175,80,0.15); letter-spacing: 0.3px; }
+        .edit-btn { background: rgba(76,175,80,0.3); color: #c8e6c9; border: 1px solid #66bb6a; padding: 6px 18px; border-radius: 40px; cursor: pointer; font-size: 14px; transition: 0.2s; backdrop-filter: blur(4px); }
+        .edit-btn:hover { background: rgba(76,175,80,0.5); }
+        .editor-area { display: none; margin-bottom: 24px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 16px; border: 1px solid rgba(76,175,80,0.2); }
+        .editor-area.open { display: block; }
+        .editor-area textarea { width: 100%; height: 400px; background: #1a2a20; color: #d0e8d0; border: 1px solid #2e7d32; border-radius: 12px; padding: 12px; font-size: 13px; font-family: 'Consolas', monospace; resize: vertical; }
+        .editor-area .btn-group { margin-top: 12px; display: flex; gap: 12px; }
+        .editor-area .btn-group button { padding: 8px 20px; border-radius: 30px; border: none; font-weight: 500; cursor: pointer; }
+        .btn-apply { background: #2e7d32; color: #fff; }
+        .btn-apply:hover { background: #1b5e20; }
+        .btn-reset { background: #5d4037; color: #ffccbc; }
+        .btn-reset:hover { background: #3e2c23; }
+        .filter-area { margin-bottom: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; background: rgba(20,45,33,0.4); padding: 10px 18px; border-radius: 40px; backdrop-filter: blur(4px); border: 1px solid rgba(76,175,80,0.1); }
+        .filter-area label { color: #a5d6a7; font-size: 14px; font-weight: 500; }
+        .filter-area select { background: rgba(30,60,45,0.6); color: #e8f5e9; border: 1px solid rgba(76,175,80,0.3); border-radius: 30px; padding: 6px 16px; font-size: 14px; cursor: pointer; outline: none; min-width: 160px; }
+        .filter-area select option { background: #1a3a28; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 16px; margin-bottom: 28px; position: relative; z-index: 1; }
+        .kpi-card { background: rgba(30,60,45,0.55); backdrop-filter: blur(4px); border-radius: 24px; padding: 18px 16px; border: 1px solid rgba(76,175,80,0.15); box-shadow: 0 4px 20px rgba(0,0,0,0.2); transition: transform 0.25s, box-shadow 0.25s; text-align: center; }
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,30,0,0.5); border-color: rgba(76,175,80,0.4); }
+        .kpi-card .number { font-size: 32px; font-weight: 700; color: #c8e6c9; letter-spacing: 0.5px; line-height: 1.2; }
+        .kpi-card .label { font-size: 13px; color: #81c784; margin-top: 6px; font-weight: 400; letter-spacing: 0.5px; }
+        .trend-chart-container { height: 220px; position: relative; }
+        .row { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; margin-bottom: 24px; position: relative; z-index: 1; }
+        @media (max-width: 900px) { .row { grid-template-columns: 1fr; gap: 20px; } }
+        .chart-card { background: rgba(20,45,33,0.6); backdrop-filter: blur(6px); border-radius: 28px; padding: 20px 18px 16px; border: 1px solid rgba(76,175,80,0.12); box-shadow: 0 4px 24px rgba(0,0,0,0.25); transition: border-color 0.3s; }
+        .chart-card:hover { border-color: rgba(76,175,80,0.3); }
+        .chart-card h3 { color: #c8e6c9; font-size: 16px; font-weight: 500; margin-bottom: 12px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+        .chart-card h3 i { color: #81c784; font-style: normal; font-size: 18px; }
+        .chart-container { height: 240px; position: relative; }
+        .member-scroll { max-height: 360px; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; scrollbar-color: #2e7d32 #1a3a28; }
+        .member-scroll::-webkit-scrollbar { width: 5px; }
+        .member-scroll::-webkit-scrollbar-track { background: #1a3a28; border-radius: 10px; }
+        .member-scroll::-webkit-scrollbar-thumb { background: #2e7d32; border-radius: 10px; }
+        .member-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: rgba(46,125,80,0.08); border-radius: 16px; border-left: 3px solid transparent; transition: background 0.2s, border-color 0.2s; }
+        .member-item:hover { background: rgba(46,125,80,0.18); border-left-color: #66bb6a; }
+        .member-item .name { color: #e8f5e9; font-size: 14px; font-weight: 500; }
+        .member-item .score { color: #a5d6a7; font-size: 14px; font-weight: 600; }
+        .member-item .badge { font-size: 11px; padding: 2px 10px; border-radius: 40px; font-weight: 600; }
+        .badge.excellent { background: #1b5e20; color: #c8e6c9; }
+        .badge.good { background: #4e342e; color: #ffccbc; }
+        .badge.weak { background: #b71c1c; color: #ffcdd2; }
+
+        /* ---------- 改为上下排列 ---------- */
+        .insight-grid {
+            display: grid;
+            grid-template-columns: 1fr;    /* 单列，上下排列 */
+            gap: 24px;
+            margin-top: 8px;
+            position: relative;
+            z-index: 1;
+        }
+        .insight-card {
+            background: rgba(20,45,33,0.6);
+            backdrop-filter: blur(6px);
+            border-radius: 28px;
+            padding: 22px 24px;
+            border: 1px solid rgba(76,175,80,0.12);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+        }
+        .insight-card h3 {
+            color: #c8e6c9;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            letter-spacing: 0.5px;
+        }
+        .insight-card ul { list-style: none; padding: 0; }
+        .insight-card li {
+            color: #d0e8d0;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 8px 0 8px 28px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%2366bb6a" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>') left center no-repeat;
+            background-size: 18px;
+            border-bottom: 1px solid rgba(76,175,80,0.06);
+        }
+        .insight-card li:last-child { border-bottom: none; }
+        .insight-card li strong { color: #a5d6a7; }
+
+        /* ---------- 错题表格放大样式 ---------- */
+        .error-detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 16px;
+            color: #d0e8d0;
+        }
+        .error-detail-table th {
+            text-align: left;
+            padding: 14px 12px;
+            color: #81c784;
+            border-bottom: 2px solid rgba(76,175,80,0.3);
+            font-size: 17px;
+            font-weight: 600;
+        }
+        .error-detail-table td {
+            padding: 14px 12px;
+            border-bottom: 1px solid rgba(76,175,80,0.1);
+            vertical-align: top;
+            line-height: 1.6;
+        }
+        .error-detail-table .highlight-wrong { color: #ffab91; }
+        .error-detail-table .highlight-correct { color: #81c784; }
+        .error-detail-table .question-en {
+            color: #e8f5e9;
+            font-weight: 500;
+            font-size: 16px;
+        }
+        .error-detail-table .question-zh {
+            color: #a5d6a7;
+            font-size: 14px;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .pie-chart-wrapper { height: 320px; }  /* 高度略增，因为独占一行 */
+        .error-table-wrapper {
+            max-height: 420px;          /* 表格区域可以更高 */
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2e7d32 #1a3a28;
+        }
+        .error-table-wrapper::-webkit-scrollbar {
+            width: 6px;
+        }
+        .error-table-wrapper::-webkit-scrollbar-track {
+            background: #1a3a28;
+            border-radius: 10px;
+        }
+        .error-table-wrapper::-webkit-scrollbar-thumb {
+            background: #2e7d32;
+            border-radius: 10px;
+        }
+
+        .glow-dot { display: inline-block; width: 8px; height: 8px; background: #66bb6a; border-radius: 50%; box-shadow: 0 0 12px #66bb6a; margin-right: 8px; animation: pulse 2.5s ease-in-out infinite; }
+        @keyframes pulse { 0%,100% { opacity: 0.4; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
+        .footer { margin-top: 30px; text-align: center; color: #6a8f7a; font-size: 13px; border-top: 1px solid rgba(76,175,80,0.08); padding-top: 18px; letter-spacing: 0.5px; position: relative; z-index: 1; }
+
+        @media (max-width:600px) {
+            .dashboard { padding:20px 16px; border-radius:28px; }
+            .header h1 { font-size:22px; }
+            .kpi-grid { grid-template-columns:1fr 1fr; }
+            .kpi-card .number { font-size:24px; }
+            .trend-chart-container { height:180px; }
+            .chart-container { height:200px; }
+            .pie-chart-wrapper { height:240px; }
+            .error-table-wrapper { max-height:320px; }
+            .editor-area textarea { height:250px; }
+            .error-detail-table { font-size:14px; }
+            .error-detail-table th, .error-detail-table td { padding: 10px 8px; }
+            .error-detail-table .question-en { font-size:14px; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <!-- 头部 + 编辑按钮 -->
+    <div class="header">
+        <h1>🌱 QC 知识掌握 <span>· 上下布局版</span></h1>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <div class="sub"><span class="glow-dot"></span>数据周期 <span id="dataPeriod">2025-08 ~ 2026-05</span></div>
+            <button class="edit-btn" id="toggleEditorBtn">✏️ 编辑数据</button>
+        </div>
+    </div>
+
+    <!-- 编辑器区域 -->
+    <div class="editor-area" id="editorArea">
+        <textarea id="jsonEditor" spellcheck="false"></textarea>
+        <div class="btn-group">
+            <button class="btn-apply" id="applyDataBtn">✅ 应用更改</button>
+            <button class="btn-reset" id="resetDataBtn">↩️ 恢复默认数据</button>
+        </div>
+        <p style="color: #6a8f7a; font-size: 12px; margin-top: 8px;">💡 修改 JSON 数据后点击“应用更改”即可刷新所有图表。修改成员分数时，请保持 scores 数组顺序与月份一致。</p>
+    </div>
+
+    <!-- KPI 卡片 -->
+    <div class="kpi-grid" id="kpiContainer"></div>
+
+    <!-- 筛选区 -->
+    <div class="filter-area">
+        <label for="memberTrendSelect">📈 查看个人月度成绩趋势 · Select Member:</label>
+        <select id="memberTrendSelect"><option value="ALL">📊 全部成员对比 (All)</option></select>
+    </div>
+
+    <!-- 趋势图 -->
+    <div class="chart-card" style="margin-bottom:24px;">
+        <h3><i>📊</i> 月度成绩趋势 · Monthly Score Trend</h3>
+        <div class="trend-chart-container"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <!-- 平均分排名 + 成员列表 -->
+    <div class="row">
+        <div class="chart-card">
+            <h3><i>📊</i> 成员平均分排名 · Average Score Ranking</h3>
+            <div class="chart-container"><canvas id="avgScoreChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3><i>👥</i> 成员详细表现 · Member Details</h3>
+            <div class="member-scroll" id="memberList"></div>
+        </div>
+    </div>
+
+    <!-- 错误分类 + 具体错题（上下排列） -->
+    <div class="insight-grid">
+        <div class="insight-card">
+            <h3>🧩 高频错误知识点分类 · Top Error Topics</h3>
+            <div class="pie-chart-wrapper"><canvas id="errorPieChart"></canvas></div>
+        </div>
+        <div class="insight-card">
+            <h3>📋 具体高频错题 (Top 10) · Specific High-Frequency Errors</h3>
+            <div class="error-table-wrapper" id="errorTableWrapper">
+                <table class="error-detail-table" id="errorDetailTable">
+                    <thead><tr><th style="width:38%;">题目 / Question</th><th style="width:31%;">常见错误 / Common Mistake</th><th style="width:31%;">正确答案 / Correct</th></tr></thead>
+                    <tbody id="errorDetailBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">⚡ 数据基于 QC 月度测试 · 单击“编辑数据”即可修改并实时预览 · 离线可用</div>
+</div>
+
+<script>
+    // ============================================================
+    // 注册 DataLabels 插件
+    if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+        Chart.register(ChartDataLabels);
+    }
+
+    // ============================================================
+    // 1. 默认数据（与之前完全一致）
+    // ============================================================
+    const DEFAULT_DATA = {
+        monthLabels: ['2025-08', '2025-09', '2025-10', '2025-11', '2026-05'],
+        monthDisplay: ['Aug 2025', 'Sep 2025', 'Oct 2025', 'Nov 2025', 'May 2026'],
+        members: [
+            { name: "Tan Kenny", scores: [80, 80, 80, 90, 100] },
+            { name: "Liu Joe", scores: [50, 70, 80, 90, 100] },
+            { name: "Wang Rainy", scores: [80, 80, 90, 80, 100] },
+            { name: "Ryan Ruan", scores: [90, 60, 70, 90, 90] },
+            { name: "Zeng Henry", scores: [80, 80, 80, 90, 90] },
+            { name: "Albert Huang", scores: [70, 80, 80, 90, 90] },
+            { name: "Li Leon", scores: [100, 50, 70, 50, 80] },
+            { name: "Huang Alex", scores: [70, 20, 60, 40, 80] },
+            { name: "Tian Danny", scores: [60, 60, 80, 40, 80] },
+            { name: "Guo Henry", scores: [60, 50, 20, 70, 90] },
+            { name: "Ray Pan", scores: [80, 50, 40, 70, 80] },
+            { name: "Wang Bakey", scores: [70, 40, 70, 50, 100] },
+            { name: "Huang Kelvin", scores: [80, 70, 50, 40, 70] },
+            { name: "Zhou Teddy", scores: [50, 70, 90, 70, 80] },
+            { name: "Zhang Simon", scores: [50, 60, 70, 70, 90] },
+            { name: "Wang Cowley", scores: [70, 70, 70, 60, 50] },
+            { name: "Zhou Ronald", scores: [80, 40, 50, 70, 60] },
+            { name: "Wu Sammy", scores: [40, 40, 60, 50, null] },
+            { name: "Vivien Zhong", scores: [null, null, null, null, 80] },
+            { name: "Shi Billy", scores: [70, null, null, null, 70] }
+        ],
+        errorTopics: [
+            { topic: "标签/规格位置要求 (Label/Spec)", count: 18 },
+            { topic: "车缝/线迹工作manship (Stitching)", count: 15 },
+            { topic: "纸箱重量/尺寸限制 (Carton)", count: 12 },
+            { topic: "QVC/客户特殊包装 (QVC packaging)", count: 10 },
+            { topic: "PFAS测试取样流程 (PFAS)", count: 9 },
+            { topic: "备用扣使用条件 (Spare button)", count: 8 },
+            { topic: "泳装卫生衬垫 (Swimwear liner)", count: 7 },
+            { topic: "AQL抽样转换 (AQL)", count: 6 },
+            { topic: "挂卡/附件包装 (Hangtag)", count: 5 },
+            { topic: "OK fabric邮件确认 (OK fabric)", count: 4 }
+        ],
+        errorDetails: [
+            {
+                question_en: "For Sheego. The size label of tops (i.e. t-shirts, blouses, sweatshirts, jackets, dresses etc.) must be",
+                question_zh: "Sheego 上衣尺码标位置",
+                wrong: "B. set in the neck seam （缝在领圈）",
+                correct: "A. placed at the garments' collar （置于领口）"
+            },
+            {
+                question_en: "Accroding to the updated inspection SOP of Manor orders, which of the following steps are correct: (Multiple answers)",
+                question_zh: "Manor 订单验货 SOP（R/S 单）",
+                wrong: "漏选 A 或 D (Missing A or D)",
+                correct: "A. Vendors book under 'R'; B. Merge packing; C. Combined inspection; D. Follow CBX as usual"
+            },
+            {
+                question_en: "With effective starting from 25th/May 2025 onwards, BPH is going to change carton label position to place",
+                question_zh: "BPH 箱唛位置变更（2025-05-25起）",
+                wrong: "B. on the front of the small side (one side) （小面正面一侧）",
+                correct: "A. on both opposite front sides of the carton （纸箱两个相对正面）"
+            },
+            {
+                question_en: "For bottom items, Customer QVC - Kilian Kerner Senses brand has the requirement of care label /size label that should be sewn",
+                question_zh: "QVC Kilian Kerner 下装洗标/尺码标位置",
+                wrong: "A. at back center waistband（后腰中心）",
+                correct: "B. at side seam under waistband (3cm-10cm) （腰头下侧缝）"
+            },
+            {
+                question_en: "Which of the following must be displayed on the sew-in label of garment for Witt-Group? (Multiple Answers)",
+                question_zh: "Witt Group 缝入式标签必需内容",
+                wrong: "漏选 D (supplier-code-number) （供应商代码）",
+                correct: "B. Order Number; C. Article Number; D. supplier-code-number"
+            },
+            {
+                question_en: "According to ERF-PFAS testing Guideline, how many test samples does the QC need to pick? (Multiple Answers)",
+                question_zh: "ERF-PFAS 测试取样数量",
+                wrong: "B. 小码3件; D. 大码2件 (3 pcs small, 2 pcs big)",
+                correct: "A. 小码2件; C. 大码1件 (2 pcs small, 1 pc big)"
+            },
+            {
+                question_en: "According to WIW - Guidelines for Hangtags and Attachments of Processing Items. How should the attachments be packed?",
+                question_zh: "Witt 挂卡及附件包装方式",
+                wrong: "A. Should be packed in polybags one by one （单个胶袋）",
+                correct: "B. should be packed in one large single polybag （集中放入一个大胶袋）"
+            },
+            {
+                question_en: "According to ERF children's safety requirement, the hanger loop may not be longer than (measured round)",
+                question_zh: "ERF 儿童安全衣架挂环最大周长",
+                wrong: "B. 8cm 或 C. 9cm",
+                correct: "A. 7.5cm"
+            },
+            {
+                question_en: "10. For BPX order, in which of the following situation is it necessary to use the spare button?",
+                question_zh: "BPX 订单何时必须使用备用扣",
+                wrong: "B. Garment has only one visible button （只有1颗可见扣）",
+                correct: "A. Garment has 2 or more visible buttons （有2颗及以上可见扣）"
+            },
+            {
+                question_en: "According to HSE - Quality requirement updated. For workmanship trousers, which of the following workmanship is CORRECT: (Multiple Answers)",
+                question_zh: "HSE 裤子工作manship 正确项（拉链方向）",
+                wrong: "混淆左右开 (Mixed left/right)",
+                correct: "Women trousers zipper opened with left hand; Jeans zipper opened with right hand"
+            }
+        ]
+    };
+
+    // 当前数据（初始为默认）
+    let currentData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+
+    // ============================================================
+    // 2. 渲染函数（核心）
+    // ============================================================
+    function renderAll() {
+        const { monthLabels, monthDisplay, members, errorTopics, errorDetails } = currentData;
+
+        // 计算平均分
+        members.forEach(m => {
+            const valid = m.scores.filter(s => s !== null && s !== undefined);
+            m.avg = valid.length ? valid.reduce((a,b) => a+b, 0) / valid.length : 0;
+        });
+
+        // ---- KPI ----
+        const totalMembers = members.length;
+        const avgAll = members.reduce((s, m) => s + m.avg, 0) / totalMembers;
+        const maxAvg = Math.max(...members.map(m => m.avg));
+        const minAvg = Math.min(...members.map(m => m.avg));
+        const excellent = members.filter(m => m.avg >= 80).length;
+        const weak = members.filter(m => m.avg < 60).length;
+        document.getElementById('kpiContainer').innerHTML = `
+            <div class="kpi-card"><div class="number">${totalMembers}</div><div class="label">参与总人数 · Total</div></div>
+            <div class="kpi-card"><div class="number">${avgAll.toFixed(1)}</div><div class="label">团队平均分 · Team Avg</div></div>
+            <div class="kpi-card"><div class="number">${maxAvg.toFixed(1)}</div><div class="label">最高平均分 · Highest</div></div>
+            <div class="kpi-card"><div class="number">${minAvg.toFixed(1)}</div><div class="label">最低平均分 · Lowest</div></div>
+            <div class="kpi-card"><div class="number">${excellent}</div><div class="label">优秀 (≥80) · Excellent</div></div>
+            <div class="kpi-card"><div class="number">${weak}</div><div class="label">待提升 (<60) · Needs Imp.</div></div>
+        `;
+        document.getElementById('dataPeriod').textContent = monthDisplay.join(' ~ ');
+
+        // ---- 成员下拉列表 ----
+        const selectEl = document.getElementById('memberTrendSelect');
+        selectEl.innerHTML = '<option value="ALL">📊 全部成员对比 (All)</option>';
+        members.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            opt.textContent = m.name;
+            selectEl.appendChild(opt);
+        });
+        // 保留当前选中值
+        const currentVal = selectEl.dataset.lastValue || 'ALL';
+        selectEl.value = currentVal;
+        selectEl.onchange = function() {
+            selectEl.dataset.lastValue = this.value;
+            renderTrend(this.value);
+        };
+
+        // ---- 趋势图渲染 ----
+        function renderTrend(selectedMember) {
+            let chart = Chart.getChart('trendChart');
+            if (chart) { chart.destroy(); }
+            let labels = monthDisplay;
+            let datasets = [];
+            if (selectedMember === 'ALL') {
+                const colors = ['#66bb6a','#4caf50','#81c784','#a5d6a7','#388e3c','#2e7d32','#1b5e20','#c8e6c9','#6a8f7a','#b2dfdb','#80cbc4','#4db6ac','#26a69a','#00897b','#00695c','#004d40','#a7d0c0','#8bc1b0','#6eb2a0','#52a390'];
+                datasets = members.map((m, idx) => ({
+                    label: m.name,
+                    data: m.scores.map(s => s !== null && s !== undefined ? s : null),
+                    borderColor: colors[idx % colors.length],
+                    backgroundColor: 'transparent',
+                    borderWidth: 1.5,
+                    pointRadius: 3,
+                    tension: 0.2,
+                    spanGaps: false
+                }));
+            } else {
+                const member = members.find(m => m.name === selectedMember);
+                if (member) {
+                    datasets = [{
+                        label: member.name,
+                        data: member.scores.map(s => s !== null && s !== undefined ? s : null),
+                        borderColor: '#66bb6a',
+                        backgroundColor: 'rgba(102,187,106,0.1)',
+                        borderWidth: 4,
+                        pointRadius: 6,
+                        pointBackgroundColor: '#81c784',
+                        tension: 0.3,
+                        fill: true,
+                        spanGaps: true
+                    }];
+                }
+            }
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#a5d6a7', font: { size: 10 }, boxWidth: 12 }, position: 'bottom', maxHeight: 60 },
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw !== null ? ctx.raw + ' 分' : '无数据'}` } },
+                        datalabels: {
+                            display: function(context) {
+                                return selectedMember !== 'ALL' && context.dataset.data[context.dataIndex] !== null;
+                            },
+                            color: '#c8e6c9',
+                            font: { weight: 'bold', size: 10 },
+                            formatter: (value) => value !== null ? value + '分' : '',
+                            anchor: 'end',
+                            align: 'top',
+                            offset: 2
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, max: 100, ticks: { color: '#a5d6a7', stepSize: 20 }, grid: { color: 'rgba(76,175,80,0.08)' } },
+                        x: { ticks: { color: '#a5d6a7' }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+        renderTrend(selectEl.value);
+
+        // ---- 平均分排名图 ----
+        const sorted = [...members].sort((a,b) => b.avg - a.avg);
+        let avgChart = Chart.getChart('avgScoreChart');
+        if (avgChart) { avgChart.destroy(); }
+        const ctxAvg = document.getElementById('avgScoreChart').getContext('2d');
+        new Chart(ctxAvg, {
+            type: 'bar',
+            data: {
+                labels: sorted.map(m => m.name),
+                datasets: [{
+                    label: '平均分 / Avg Score',
+                    data: sorted.map(m => m.avg.toFixed(1)),
+                    backgroundColor: 'rgba(76,175,80,0.7)',
+                    borderColor: '#81c784',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (ctx) => `平均分: ${ctx.raw} 分` } },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'right',
+                        color: '#c8e6c9',
+                        font: { weight: 'bold', size: 11 },
+                        formatter: (value) => value + '分',
+                        offset: 2
+                    }
+                },
+                scales: {
+                    x: { beginAtZero: true, max: 100, ticks: { color: '#a5d6a7', stepSize: 20 }, grid: { color: 'rgba(76,175,80,0.08)' } },
+                    y: { ticks: { color: '#a5d6a7', font: { size: 10 } }, grid: { display: false } }
+                }
+            }
+        });
+
+        // ---- 成员列表 ----
+        const memberListDiv = document.getElementById('memberList');
+        memberListDiv.innerHTML = sorted.map(m => {
+            let badge = '';
+            if (m.avg >= 80) badge = '<span class="badge excellent">优秀 · Excellent</span>';
+            else if (m.avg >= 60) badge = '<span class="badge good">良好 · Good</span>';
+            else badge = '<span class="badge weak">待提升 · Needs Imp.</span>';
+            const monthStr = m.scores.map((s, idx) => {
+                if (s !== null && s !== undefined) return `${monthDisplay[idx].slice(0,3)}: ${s}分`;
+                return `${monthDisplay[idx].slice(0,3)}: -`;
+            }).join(' | ');
+            return `
+                <div class="member-item">
+                    <div>
+                        <span class="name">${m.name}</span>
+                        <span style="color:#6a8f7a; font-size:12px; margin-left:8px;">${monthStr}</span>
+                    </div>
+                    <div>
+                        <span class="score">${m.avg.toFixed(1)}</span>
+                        ${badge}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // ---- 错误分类饼图 ----
+        const totalErrors = errorTopics.reduce((s, t) => s + t.count, 0);
+        let pieChart = Chart.getChart('errorPieChart');
+        if (pieChart) { pieChart.destroy(); }
+        const ctxPie = document.getElementById('errorPieChart').getContext('2d');
+        new Chart(ctxPie, {
+            type: 'pie',
+            data: {
+                labels: errorTopics.map(t => t.topic),
+                datasets: [{
+                    data: errorTopics.map(t => t.count),
+                    backgroundColor: ['#66bb6a','#4caf50','#388e3c','#2e7d32','#1b5e20','#81c784','#a5d6a7','#c8e6c9','#1a3a28','#0f1f18'],
+                    borderColor: 'rgba(0,0,0,0.2)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { color: '#a5d6a7', font: { size: 10 }, boxWidth: 12 } },
+                    tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw} 次 (${(ctx.raw/totalErrors*100).toFixed(1)}%)` } },
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold', size: 10 },
+                        formatter: (value, ctx) => {
+                            let percent = (value / totalErrors * 100).toFixed(1);
+                            return percent + '%';
+                        },
+                        display: function(context) {
+                            return context.dataset.data[context.dataIndex] / totalErrors > 0.05;
+                        }
+                    }
+                }
+            }
+        });
+
+        // ---- 具体错题表格（已通过 CSS 放大） ----
+        const errorBody = document.getElementById('errorDetailBody');
+        errorBody.innerHTML = errorDetails.map(e => `
+            <tr>
+                <td>
+                    <span class="question-en">${e.question_en}</span>
+                    <span class="question-zh">${e.question_zh}</span>
+                </td>
+                <td class="highlight-wrong">${e.wrong}</td>
+                <td class="highlight-correct">${e.correct}</td>
+            </tr>
+        `).join('');
+    }
+
+    // ============================================================
+    // 3. 编辑器交互
+    // ============================================================
+    const editorArea = document.getElementById('editorArea');
+    const jsonEditor = document.getElementById('jsonEditor');
+    const toggleBtn = document.getElementById('toggleEditorBtn');
+    const applyBtn = document.getElementById('applyDataBtn');
+    const resetBtn = document.getElementById('resetDataBtn');
+
+    function openEditor() {
+        jsonEditor.value = JSON.stringify(currentData, null, 2);
+        editorArea.classList.add('open');
+        toggleBtn.textContent = '✖️ 关闭编辑';
+    }
+
+    function closeEditor() {
+        editorArea.classList.remove('open');
+        toggleBtn.textContent = '✏️ 编辑数据';
+    }
+
+    toggleBtn.addEventListener('click', function() {
+        if (editorArea.classList.contains('open')) {
+            closeEditor();
+        } else {
+            openEditor();
+        }
+    });
+
+    applyBtn.addEventListener('click', function() {
+        try {
+            const newData = JSON.parse(jsonEditor.value);
+            if (!newData.members || !newData.errorTopics || !newData.errorDetails) {
+                throw new Error('数据格式不完整，请确保包含 members, errorTopics, errorDetails 字段');
+            }
+            const monthLen = newData.monthLabels.length;
+            for (let m of newData.members) {
+                if (m.scores.length !== monthLen) {
+                    throw new Error(`成员 ${m.name} 的 scores 长度 (${m.scores.length}) 与 monthLabels (${monthLen}) 不一致`);
+                }
+            }
+            currentData = newData;
+            renderAll();
+            closeEditor();
+        } catch (e) {
+            alert('数据格式错误：' + e.message + '\n请检查 JSON 格式是否正确。');
+        }
+    });
+
+    resetBtn.addEventListener('click', function() {
+        if (confirm('确认恢复默认数据？当前修改将丢失。')) {
+            currentData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+            renderAll();
+            if (editorArea.classList.contains('open')) {
+                jsonEditor.value = JSON.stringify(currentData, null, 2);
+            }
+            closeEditor();
+        }
+    });
+
+    // ============================================================
+    // 4. 初始化渲染
+    // ============================================================
+    renderAll();
+
+    if (typeof Chart === 'undefined') {
+        alert('Chart.js 库未加载，请确保网络连接或使用离线库文件。');
+    }
+</script>
+</body>
+</html>
